@@ -12,10 +12,30 @@ from dataclasses import dataclass, field
 
 from .schema import ENTITY_TYPES, TYPE_TO_KEY
 
-# Tried in order. Both are public; availability on the Hub can change, hence the fallbacks.
-DATASET_CANDIDATES: tuple[tuple[str, str | None], ...] = (
-    ("bigbio/bc5cdr", "bc5cdr_bigbio_kb"),
-    ("tner/bc5cdr", None),
+# Tried in order. ``datasets`` >= 4 no longer runs Hub loading scripts (``bc5cdr.py``), so the
+# primary sources are plain data files that need no script: the raw JSON-lines files in the
+# tner/bc5cdr repo, then the Hub's auto-converted parquet copy of the same data. The bigbio
+# script dataset is kept last for environments that still pin ``datasets`` < 4.
+_HF = "https://huggingface.co/datasets"
+_TNER_RAW = f"{_HF}/tner/bc5cdr/resolve/main/dataset"
+_TNER_PARQUET = f"{_HF}/tner/bc5cdr/resolve/refs%2Fconvert%2Fparquet/bc5cdr"
+
+DATASET_CANDIDATES: tuple[tuple[str, str | None, dict[str, str] | None], ...] = (
+    (
+        "json",
+        None,
+        {
+            "train": f"{_TNER_RAW}/train.json",
+            "validation": f"{_TNER_RAW}/valid.json",
+            "test": f"{_TNER_RAW}/test.json",
+        },
+    ),
+    (
+        "parquet",
+        None,
+        {s: f"{_TNER_PARQUET}/{s}/0000.parquet" for s in ("train", "validation", "test")},
+    ),
+    ("bigbio/bc5cdr", "bc5cdr_bigbio_kb", None),
 )
 
 TNER_LABELS = ["O", "B-Chemical", "B-Disease", "I-Disease", "I-Chemical"]
@@ -148,7 +168,10 @@ def rows_to_examples(rows, label_names: list[str] | None = None) -> list[Example
 def load_bc5cdr(
     candidates=DATASET_CANDIDATES, cache_dir: str | None = None
 ) -> dict[str, list[Example]]:
-    """Load BC5CDR via Hugging Face ``datasets``, trying several public ids.
+    """Load BC5CDR via Hugging Face ``datasets``, trying several public sources.
+
+    Each candidate is ``(builder_or_id, config, data_files)``: with ``data_files`` the generic
+    ``json``/``parquet`` builder reads those files directly (no Hub script involved).
 
     Returns ``{"train": [...], "validation": [...], "test": [...]}``. Raises ``RuntimeError`` with a
     clear message listing every failed candidate if none can be loaded.
@@ -156,13 +179,13 @@ def load_bc5cdr(
     from datasets import load_dataset  # lazy: heavy, and not needed for unit tests
 
     errors: list[str] = []
-    for name, config in candidates:
+    for cand in candidates:
+        name, config, data_files = (tuple(cand) + (None, None))[:3]
         try:
-            ds = (
-                load_dataset(name, config, cache_dir=cache_dir)
-                if config
-                else load_dataset(name, cache_dir=cache_dir)
-            )
+            kwargs: dict = {"cache_dir": cache_dir}
+            if data_files:
+                kwargs["data_files"] = data_files
+            ds = load_dataset(name, config, **kwargs) if config else load_dataset(name, **kwargs)
             label_names = None
             try:
                 feat = ds["train"].features.get("tags")
@@ -174,7 +197,8 @@ def load_bc5cdr(
                 raise ValueError(f"missing train/test splits (got {sorted(splits)})")
             return splits
         except Exception as exc:  # noqa: BLE001 - we report every failure to the user
-            errors.append(f"  - {name} ({config}): {type(exc).__name__}: {exc}")
+            source = next(iter(data_files.values())) if data_files else f"{name} ({config})"
+            errors.append(f"  - {source}: {type(exc).__name__}: {exc}")
     raise RuntimeError(
         "Could not load BC5CDR from any known Hugging Face dataset id. Tried:\n"
         + "\n".join(errors)

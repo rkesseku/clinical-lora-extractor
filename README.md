@@ -49,7 +49,7 @@ proper uncertainty quantification instead of a single point estimate.
 
 | Module | Role |
 |---|---|
-| `src/clinical_lora/data.py` | BC5CDR loading (tries `bigbio/bc5cdr`, then `tner/bc5cdr`; clear error if none load), span/BIO to JSON conversion |
+| `src/clinical_lora/data.py` | BC5CDR loading (reads the `tner/bc5cdr` JSON-lines files directly, then its parquet copy, then legacy `bigbio/bc5cdr`; no Hub loading scripts, which `datasets` >= 4 rejects; clear error if none load), span/BIO to JSON conversion |
 | `prompts.py` | One instruction template for few-shot prompting and for LoRA training |
 | `train.py` | PEFT LoRA + `transformers.Trainer`; loss only on the JSON answer tokens |
 | `inference.py` | Batched greedy generation, per-example latency and token counts |

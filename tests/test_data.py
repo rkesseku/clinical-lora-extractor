@@ -90,3 +90,47 @@ def test_prompt_messages_with_shots():
     msgs = build_messages("doc", select_shots(shots, 1))
     assert [m["role"] for m in msgs] == ["system", "user", "assistant", "user"]
     assert json.loads(msgs[2]["content"]) == {"chemicals": ["x"], "diseases": []}
+
+
+def _short_cache_dir(tmp_path):
+    """`datasets` lock names embed the cache path; keep it short for Windows' MAX_PATH."""
+    import tempfile
+
+    return tempfile.mkdtemp(prefix="hf")
+
+
+def test_load_bc5cdr_from_plain_json_files(tmp_path):
+    """The primary source path: generic `json` builder over tner-format files, no Hub script."""
+    pytest.importorskip("datasets")
+    import json as _json
+
+    from clinical_lora.data import load_bc5cdr
+
+    rows = [
+        {"tokens": ["Lidocaine", "caused", "seizures", "."], "tags": [1, 0, 2, 0]},
+        {"tokens": ["Acute", "renal", "failure", "after", "cisplatin"], "tags": [2, 3, 3, 0, 1]},
+    ]
+    files = {}
+    for split in ("train", "validation", "test"):
+        f = tmp_path / f"{split}.json"
+        f.write_text("\n".join(_json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        files[split] = str(f)
+
+    bad = ("json", None, {"train": str(tmp_path / "missing.json")})
+    splits = load_bc5cdr(
+        candidates=(bad, ("json", None, files)), cache_dir=_short_cache_dir(tmp_path)
+    )
+
+    assert set(splits) == {"train", "validation", "test"}
+    first, second = splits["train"]
+    assert first.entities == {"chemicals": ["Lidocaine"], "diseases": ["seizures"]}
+    assert second.entities == {"chemicals": ["cisplatin"], "diseases": ["Acute renal failure"]}
+
+
+def test_load_bc5cdr_reports_every_failed_source(tmp_path):
+    pytest.importorskip("datasets")
+    from clinical_lora.data import load_bc5cdr
+
+    bad = ("json", None, {"train": str(tmp_path / "nope.json")})
+    with pytest.raises(RuntimeError, match="nope.json"):
+        load_bc5cdr(candidates=(bad,), cache_dir=_short_cache_dir(tmp_path))
