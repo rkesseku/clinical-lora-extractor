@@ -136,26 +136,40 @@ was obtained. `GET /health` reports the loaded model.
 
 ## Results
 
-> **Placeholder: to be filled from `results/metrics.json` after the Colab run.** No numbers have been
-> produced yet; none are claimed here.
+One run on a free Colab **Tesla T4** (fp16 LoRA, no 4-bit), base model `Qwen/Qwen2.5-1.5B-Instruct`,
+LoRA r=16 / alpha=32, 1 epoch on **2,000** training examples (training took **4.8 min**, final train
+loss 0.090). Both systems are scored on the **same 200 held-out test examples** (seed 0). Examples are
+the sentence-level units of the `tner/bc5cdr` release of BC5CDR. Intervals are 95% percentile-bootstrap
+CIs over examples (1,000 resamples). Full output: [`docs/results/report.md`](docs/results/report.md),
+[`docs/results/metrics.json`](docs/results/metrics.json).
 
-| System | Strict F1 (95% CI) | Relaxed F1 (95% CI) | Strict-JSON rate | Latency / ex (s) | Tokens in / out | Cost / 1k ex |
+| System | Strict F1 (95% CI) | Relaxed F1 (95% CI) | Strict-JSON rate | Latency / ex, mean (s) | Tokens in / out | Cost / 1k ex |
 |---|---|---|---|---|---|---|
-| Base model, few-shot (k=3) | _tbd_ | _tbd_ | _tbd_ | _tbd_ | _tbd_ | n/a |
-| Hosted API, few-shot (optional) | _tbd_ | _tbd_ | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| **LoRA fine-tuned (0-shot)** | _tbd_ | _tbd_ | _tbd_ | _tbd_ | _tbd_ | n/a |
+| Base model, few-shot (k=3) | 0.460 [0.392, 0.521] | 0.554 [0.492, 0.617] | 1.000 | 0.237 | 381 / 17 | n/a (local) |
+| **LoRA fine-tuned (0-shot)** | **0.823 [0.784, 0.861]** | **0.861 [0.823, 0.896]** | 1.000 | 0.406 | 113 / 20 | n/a (local) |
 
-Paired bootstrap, LoRA minus few-shot (overall F1): _tbd_. Per-type (chemicals / diseases) breakdown
-and plots are generated into `results/` (`metrics.json`, `report.md`, `f1_by_type.png`,
-`latency_validity.png`).
+Strict F1 by entity type: chemicals 0.551 to **0.846**, diseases 0.348 to **0.795** (few-shot to LoRA).
+The few-shot baseline is precise but misses most entities (strict precision 0.665, recall 0.352); LoRA
+lifts recall to 0.790 while also raising precision to 0.859.
+
+**Paired bootstrap, LoRA minus few-shot (overall F1):** strict **+0.362** [+0.308, +0.423], relaxed
+**+0.307** [+0.256, +0.359]; two-sided bootstrap p < 0.001 for both (no resample favoured few-shot).
+
+Latency is wall-clock generation time divided by batch size on the same T4 and batch size. The LoRA
+model is slower per example despite a 3x shorter prompt, likely because the adapter is applied unmerged
+at inference; merging it into the base weights should remove that overhead (not measured here). The
+optional hosted-API baseline was not run, so no API cost is reported.
+
+![F1 by entity type](docs/results/f1_by_type.png)
+![Validity and latency](docs/results/latency_validity.png)
 
 ## Limitations
 
 * Literature, not clinical notes; no PHI is involved or implied. Validate on in-domain data before any
   clinical use. This is a research/portfolio project, not a medical device.
 * String-level, document-deduplicated evaluation (no offsets, no mention counts).
-* Default run uses a subsample of the train and test splits to fit a free T4; use the config cell to scale
-  up for tighter intervals.
+* The reported run uses a subsample (2,000 train / 200 test examples, one seed) to fit a free T4; scale
+  up in the config cell for tighter intervals and repeat over seeds before drawing finer conclusions.
 * Latency is amortised over a generation batch and depends on hardware.
 
 ## License
