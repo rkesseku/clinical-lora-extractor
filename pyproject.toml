@@ -1,6 +1,6 @@
 [project]
 name = "clinical-lora-extractor"
-version = "0.1.0"
+version = "0.1.1"
 description = "LoRA fine-tuning vs. few-shot prompting for structured biomedical entity extraction (BC5CDR), with strict/relaxed evaluation, bootstrap CIs and a FastAPI endpoint."
 readme = "README.md"
 requires-python = ">=3.10"
