@@ -1,0 +1,62 @@
+[project]
+name = "clinical-lora-extractor"
+version = "0.1.0"
+description = "LoRA fine-tuning vs. few-shot prompting for structured biomedical entity extraction (BC5CDR), with strict/relaxed evaluation, bootstrap CIs and a FastAPI endpoint."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Reagan Kesseku" }]
+license = { text = "MIT" }
+keywords = ["lora", "peft", "biomedical-nlp", "information-extraction", "llm", "evaluation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "torch>=2.1",
+    "transformers>=4.44",
+    "peft>=0.12",
+    "datasets>=2.20",
+    "accelerate>=0.33",
+    "fastapi>=0.110",
+    "pydantic>=2.5",
+    "httpx>=0.27",
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+train = ["trl>=0.9", "bitsandbytes>=0.43; platform_system == 'Linux'"]
+serve = ["uvicorn>=0.30"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+clinical-lora = "clinical_lora.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/rkesseku/clinical-lora-extractor"
+Repository = "https://github.com/rkesseku/clinical-lora-extractor"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["clinical_lora*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning", "ignore::UserWarning"]
