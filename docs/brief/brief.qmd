@@ -16,6 +16,11 @@ format:
 
 ```{=typst}
 #set text(hyphenate: false)
+// Three-rule tables (top, below header, bottom) and bold "Figure N" / "Table N" labels
+#set table.hline(stroke: 0.6pt)
+#show table: it => box(stroke: (top: 1pt, bottom: 1pt), it)
+#show figure.caption: it => context [#strong[#it.supplement~#it.counter.display(it.numbering)#it.separator]#it.body]
+#show table: set par(justify: false)
 #show heading.where(level: 1): it => block(above: 1.2em, below: 0.6em)[
   #set text(fill: rgb("#1f4e9e"), size: 14pt, weight: "bold")
   #it
@@ -53,7 +58,7 @@ The corpus is BC5CDR: PubMed literature annotated with chemical and disease ment
 
 ## Architecture
 
-![Architecture overview. The same prompt template feeds both the few-shot baseline and LoRA training; every system's output goes through one parser and one scorer, and the same parsing logic backs the serving endpoint.](figures/architecture.png){#fig-arch width=100%}
+![Architecture overview. The same prompt template feeds both the few-shot baseline and LoRA training; every system's output goes through one parser and one scorer, and the same parsing logic backs the serving endpoint.](figures/architecture.png){#fig-arch width=90%}
 
 ## How it works, end to end
 
@@ -119,9 +124,9 @@ All numbers come from the single real run in `docs/results/metrics.json` (Colab 
 
 The paired bootstrap on overall F1 (LoRA minus few-shot) gives *+0.362* [+0.308, +0.423] strict and *+0.307* [+0.256, +0.359] relaxed; no bootstrap resample favoured few-shot (reported two-sided p < 0.001).
 
-![Precision versus recall for each system, by entity type and overall. The few-shot baseline is fairly precise but misses most entities; LoRA moves both axes up.](figures/precision_recall.png){#fig-pr width=56%}
+![Precision versus recall for each system, by entity type and overall. The few-shot baseline is fairly precise but misses most entities; LoRA moves both axes up.](figures/precision_recall.png){#fig-pr width=50%}
 
-![F1 by entity type with 95% bootstrap intervals (restyled from the repo's results plot).](figures/f1_by_type.png){#fig-f1 width=56%}
+![F1 by entity type with 95% bootstrap intervals (restyled from the repo's results plot).](figures/f1_by_type.png){#fig-f1 width=50%}
 
 *Reading the results.* The few-shot baseline's weakness is recall (0.352 strict overall; diseases 0.258), not precision. LoRA roughly doubles recall (0.790) while also raising precision (0.859). Diseases are the harder type for both systems under strict matching (F1 0.348 to 0.795, against chemicals 0.551 to 0.846), and relaxed matching nearly closes LoRA's chemical/disease gap (0.860 versus 0.863), suggesting some disease error is boundary disagreement. Both systems produced strictly valid JSON for all 200 examples, so the gain is in extraction quality, not format.
 
