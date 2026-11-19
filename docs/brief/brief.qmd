@@ -1,5 +1,5 @@
 ---
-title: "clinical-lora-extractor"
+title: "Biomedical Entity Extractor: LoRA vs. Prompting"
 subtitle: "Fine-tuning a small open model to turn biomedical text into validated JSON, and measuring honestly how much it beats few-shot prompting"
 author:
   - name: "Reagan Kesseku · Project brief · github.com/rkesseku/clinical-lora-extractor"
