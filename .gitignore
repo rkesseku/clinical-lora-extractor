@@ -21,3 +21,5 @@ wandb/
 results/*
 !results/.gitkeep
 *.zip
+results_ablation/
+results_ablation.zip

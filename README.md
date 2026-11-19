@@ -102,6 +102,17 @@ proper uncertainty quantification instead of a single point estimate.
 
 Command-line equivalent (needs a GPU): `clinical-lora run --n-train 2000 --n-test 200`.
 
+### Is one epoch enough? Training-budget ablation (set up, not yet run)
+
+The reported run used one epoch on 2,000 sentences, a budget choice that was never tested. The
+`notebooks/ablation_colab.ipynb` notebook (or `clinical-lora ablate`) trains a grid of
+**epochs 1, 2, 3 x 2,000 sentences vs. the full training split**, each from a fresh base model, and
+scores every configuration on 300 sentences of the BC5CDR **validation** split. The best configuration
+is chosen on validation strict F1 alone; the test set is then used once, for the selected configuration
+and for the reported recipe, with a paired bootstrap of the difference. Outputs go to
+`results_ablation/` (`ablation.json`, `ablation.md`, `ablation_val_f1.png`). No results are reported
+here until it has been run.
+
 ## Local development (CPU, no downloads)
 
 ```bash
@@ -170,6 +181,8 @@ optional hosted-API baseline was not run, so no API cost is reported.
 * String-level, document-deduplicated evaluation (no offsets, no mention counts).
 * The reported run uses a subsample (2,000 train / 200 test examples, one seed) to fit a free T4; scale
   up in the config cell for tighter intervals and repeat over seeds before drawing finer conclusions.
+* The training budget (1 epoch, 2,000 sentences) was not tuned; the ablation above tests it but has not
+  been run yet.
 * Latency is amortised over a generation batch and depends on hardware.
 
 ## License

@@ -1,4 +1,4 @@
-"""Command line entry point: ``clinical-lora run`` (end-to-end) and ``clinical-lora serve``."""
+"""Command line entry point: ``clinical-lora run`` (end-to-end), ``ablate`` and ``serve``."""
 
 from __future__ import annotations
 
@@ -27,6 +27,20 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("--out", default="results")
     r.add_argument("--adapter-dir", default="adapters/clinical-lora")
 
+    a = sub.add_parser(
+        "ablate", help="epochs x training-size grid, chosen on validation, test once (needs a GPU)"
+    )
+    a.add_argument("--base-model", default="Qwen/Qwen2.5-1.5B-Instruct")
+    a.add_argument("--epochs", type=float, nargs="+", default=[1.0, 2.0, 3.0])
+    a.add_argument(
+        "--n-train", nargs="+", default=["2000", "all"], help="training sizes; 'all' = full split"
+    )
+    a.add_argument("--n-val", type=int, default=300)
+    a.add_argument("--n-test", type=int, default=200)
+    a.add_argument("--load-in-4bit", action="store_true")
+    a.add_argument("--out", default="results_ablation")
+    a.add_argument("--adapter-root", default="adapters/ablation")
+
     s = sub.add_parser("serve", help="serve base model + adapter over FastAPI")
     s.add_argument("--base-model", default="Qwen/Qwen2.5-1.5B-Instruct")
     s.add_argument("--adapter", default=None)
@@ -52,6 +66,22 @@ def main(argv: list[str] | None = None) -> None:
         )
         res = run_experiment(cfg)
         print(json.dumps(res["meta"], indent=2))
+    elif args.cmd == "ablate":
+        from .ablation import AblationConfig, run_ablation
+
+        sizes = tuple(None if s == "all" else int(s) for s in args.n_train)
+        acfg = AblationConfig(
+            base_model=args.base_model,
+            epochs=tuple(args.epochs),
+            n_train=sizes,
+            n_val=args.n_val,
+            n_test=args.n_test,
+            load_in_4bit=args.load_in_4bit,
+            out_dir=args.out,
+            adapter_root=args.adapter_root,
+        )
+        res = run_ablation(acfg)
+        print(f"selected: {res['selected']} (reference: {res['reference']})")
     else:
         import uvicorn  # optional extra: pip install "clinical-lora-extractor[serve]"
 
