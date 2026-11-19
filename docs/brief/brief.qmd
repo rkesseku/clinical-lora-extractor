@@ -1,4 +1,6 @@
 ---
+bibliography: references.bib
+bibliographystyle: apa
 linkcolor: "#1f4e9e"
 format:
   typst:
@@ -12,6 +14,8 @@ format:
 
 ```{=typst}
 #set text(hyphenate: false)
+#set bibliography(title: "References")
+#show bibliography: set par(justify: false)
 // Three-rule tables (top, below header, bottom) and bold "Figure N" / "Table N" labels
 #set table.hline(stroke: 0.6pt)
 #show table: it => box(stroke: (top: 1pt, bottom: 1pt), it)
@@ -25,6 +29,7 @@ format:
 #let glance(body) = block(fill: rgb("#eef3fb"), stroke: (left: 3pt + rgb("#1f4e9e")), inset: 10pt, radius: 2pt, width: 100%, body)
 // Header: red title, subtitle, author, repository link
 #align(center)[
+  #set par(justify: false)
   #text(size: 17pt, weight: "bold", fill: rgb("#b91c1c"))[Biomedical Entity Extractor: LoRA vs. Prompting]
   #v(0.5em)
   #text(size: 12pt, weight: "bold")[Fine-tuning a small open model to turn biomedical text into validated JSON, and measuring honestly how much it beats few-shot prompting]
@@ -32,6 +37,8 @@ format:
   #text(size: 11pt)[Reagan Kesseku, Ph.D.]
   #linebreak()
   #text(size: 10pt)[#link("https://github.com/rkesseku/clinical-lora-extractor")[github.com/rkesseku/clinical-lora-extractor]]
+  #v(0.45em)
+  #text(size: 9.5pt)[#emph[Keywords:] LoRA; parameter-efficient fine-tuning; biomedical named-entity recognition; structured output; LLM evaluation]
 ]
 #v(0.5em)
 ```
@@ -57,7 +64,7 @@ The practical question this project answers is narrow and testable: *for one wel
 
 ## What the data is, and is not
 
-The corpus is BC5CDR: PubMed literature annotated with chemical and disease mentions. It is a public *proxy* for clinical text. It contains no protected health information and is not clinical-note data, so the results should not be assumed to transfer to real electronic health record notes without re-validation. The repo says this explicitly, and so does this brief.
+The corpus is BC5CDR [@li2016bc5cdr]: PubMed literature annotated with chemical and disease mentions. It is a public *proxy* for clinical text. It contains no protected health information and is not clinical-note data, so the results should not be assumed to transfer to real electronic health record notes without re-validation. The repo says this explicitly, and so does this brief.
 
 {{< pagebreak >}}
 
@@ -71,10 +78,10 @@ The corpus is BC5CDR: PubMed literature annotated with chemical and disease ment
 
 1. *Data* (`data.py`). BC5CDR is read from the `tner/bc5cdr` release (JSON-lines files, then a parquet copy, then legacy `bigbio/bc5cdr`), avoiding Hub loading scripts that recent `datasets` versions reject. BIO tags or character spans are converted into the target JSON: deduplicated mention strings per type, in order of first appearance. Examples are the sentence-level units of that release.
 2. *Prompt* (`prompts.py`). A single system instruction ("reply with ONLY a JSON object...") and user template are used both for few-shot prompting and for training, so the two systems differ only in how the model learned the task.
-3. *Training* (`train.py`). LoRA adapters (r=16, alpha=32, dropout 0.05) on all attention and MLP projection layers; the loss is computed only on the JSON answer tokens plus end-of-sequence, with prompt tokens masked.
+3. *Training* (`train.py`). LoRA [@hu2022lora] adapters (r=16, alpha=32, dropout 0.05) on all attention and MLP projection layers; the loss is computed only on the JSON answer tokens plus end-of-sequence, with prompt tokens masked.
 4. *Inference* (`inference.py`). Batched greedy decoding with per-example latency and token accounting, identical for both systems.
 5. *Parsing* (`parsing.py`). The output passes through candidate extraction (code fences, brace matching), strict JSON parsing, a repair step for trailing commas and truncated output, and finally a pydantic `Extraction` schema. Strictly valid, repaired, and unparseable outputs are tracked separately; unparseable output is scored as an empty prediction.
-6. *Evaluation* (`metrics.py`, `evaluate.py`). Strict and relaxed entity-level precision, recall and F1, document-level bootstrap intervals, and a paired bootstrap for the difference between systems. Outputs are `metrics.json`, a Markdown report and plots.
+6. *Evaluation* (`metrics.py`, `evaluate.py`). Strict and relaxed entity-level precision, recall and F1, document-level bootstrap intervals [@efron1993], and a paired bootstrap for the difference between systems. Outputs are `metrics.json`, a Markdown report and plots.
 7. *Serving* (`serve.py`). A FastAPI `/extract` endpoint wraps the model in parse, retry and repair logic and returns a validated response with `valid_json`, `repaired` and `attempts` fields so a caller can see how the answer was obtained.
 
 {{< pagebreak >}}
@@ -89,7 +96,7 @@ The model emits a small fixed schema rather than free text or character offsets.
 
 | Setting | Value |
 |---|---|
-| Base model | Qwen/Qwen2.5-1.5B-Instruct (Apache-2.0) |
+| Base model | Qwen/Qwen2.5-1.5B-Instruct [@qwen2025] (Apache-2.0) |
 | Adapter | LoRA, r=16, alpha=32, dropout 0.05, all attention and MLP projections |
 | Precision | fp16 on a Tesla T4, fp32 adapter weights (4-bit QLoRA path exists but was not used) |
 | Data | 2,000 training and 200 test examples, seed 0 |
