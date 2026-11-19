@@ -95,7 +95,7 @@ The model emits a small fixed schema rather than free text or character offsets.
 ## Fine-tuning setup
 
 | Setting | Value |
-|---|---|
+|----------------------|------------------------------------------------------------------------------|
 | Base model | Qwen/Qwen2.5-1.5B-Instruct [@qwen2025] (Apache-2.0) |
 | Adapter | LoRA, r=16, alpha=32, dropout 0.05, all attention and MLP projections |
 | Precision | fp16 on a Tesla T4, fp32 adapter weights (4-bit QLoRA path exists but was not used) |
@@ -130,11 +130,11 @@ The test suite has 44 tests (all passing). They build a tiny randomly initialise
 All numbers come from the single real run in `docs/results/metrics.json` (Colab T4, seed 0): same 200 held-out sentences, 95% percentile-bootstrap CIs (1,000 resamples).
 
 | System | Strict F1 [95% CI] | Relaxed F1 [95% CI] | Strict P / R | Strict-JSON rate |
-|---|---|---|---|---|
-| Few-shot base (k=3) | 0.460 [0.392, 0.521] | 0.554 [0.492, 0.617] | 0.665 / 0.352 | 1.000 |
-| *LoRA (0-shot)* | *0.823 [0.784, 0.861]* | *0.861 [0.823, 0.896]* | 0.859 / 0.790 | 1.000 |
+|----------------------|-----------------------|-----------------------|---------------|------------------|
+| Few-shot base (k=3) | 0.460 [0.392, 0.521] | 0.554 [0.492, 0.617] | 0.665 / 0.352 | **1.000** |
+| LoRA (0-shot) | **0.823** [0.784, 0.861] | **0.861** [0.823, 0.896] | **0.859** / **0.790** | **1.000** |
 
-: Overall entity-level results. {#tbl-results}
+: Overall entity-level results. Bold marks the better system on each metric. {#tbl-results}
 
 The paired bootstrap on overall F1 (LoRA minus few-shot) gives *+0.362* [+0.308, +0.423] strict and *+0.307* [+0.256, +0.359] relaxed; no bootstrap resample favoured few-shot (reported two-sided p < 0.001).
 
