@@ -29,7 +29,7 @@ def arrow(ax, x1, y1, x2, y2):
 
 # 1. architecture
 fig, ax = plt.subplots(figsize=(9, 4.6))
-ax.set_xlim(0, 12); ax.set_ylim(0, 6.2); ax.axis("off")
+ax.set_xlim(0, 12); ax.set_ylim(0.3, 6.2); ax.axis("off")
 box(ax, 0.2, 4.7, 2.6, 1.0, "BC5CDR\n(tner/bc5cdr, public)")
 box(ax, 3.6, 4.7, 2.8, 1.0, "data.py\nspans/BIO -> target JSON")
 box(ax, 7.2, 4.7, 2.0, 1.0, "prompts.py\nsame instruction")
@@ -39,15 +39,22 @@ box(ax, 3.6, 2.7, 2.8, 1.0, "inference.py\nbatched greedy decoding\n+ latency / 
 box(ax, 7.2, 2.7, 2.0, 1.0, "Base model\n+ 3 shots", fc="#f4f4f4", ec=GREY)
 box(ax, 10.0, 2.7, 1.8, 1.0, "Base model\n+ LoRA adapter\n(0-shot)", fc="#fdf0e2", ec=ORG)
 arrow(ax, 8.2, 4.7, 8.2, 3.7); arrow(ax, 10.9, 4.7, 10.9, 3.7)
-arrow(ax, 7.2, 3.2, 6.4, 3.2); arrow(ax, 10.0, 2.95, 6.4, 2.95)
+arrow(ax, 7.2, 3.2, 6.4, 3.2)  # few-shot base -> shared generator
+# LoRA model -> shared generator, routed below the base-model box so it does not cross it
+ax.plot([10.5, 10.5, 5.9], [2.7, 2.4, 2.4], color="#444", lw=1.3)
+arrow(ax, 5.9, 2.4, 5.9, 2.7)
 box(ax, 3.6, 0.9, 2.8, 1.0, "parsing.py\nextract -> parse -> repair\n-> pydantic schema")
 arrow(ax, 5.0, 2.7, 5.0, 1.9)
 box(ax, 7.2, 0.9, 2.0, 1.0, "metrics.py +\nevaluate.py\nstrict / relaxed F1,\nbootstrap CIs")
 box(ax, 10.0, 0.9, 1.8, 1.0, "serve.py\nFastAPI /extract\nretry + repair")
-arrow(ax, 6.4, 1.4, 7.2, 1.4); arrow(ax, 9.2, 1.4, 10.0, 1.4)
-ax.text(0.2, 3.2, "Training / data", fontsize=8, color=ACC, fontweight="bold")
-ax.text(0.2, 2.9, "(top row)", fontsize=8, color=GREY)
-ax.text(0.2, 1.4, "Shared scoring\nand serving\n(bottom row)", fontsize=8, color=ACC, fontweight="bold")
+arrow(ax, 6.4, 1.4, 7.2, 1.4)  # parsed outputs -> scorer
+arrow(ax, 11.4, 2.7, 11.4, 1.9)  # the adapter is what the service loads
+# the service reuses the same parser
+ax.plot([4.4, 4.4, 10.6], [0.9, 0.55, 0.55], color="#444", lw=1.3)
+arrow(ax, 10.6, 0.55, 10.6, 0.9)
+ax.text(0.2, 5.95, "Data and training", fontsize=8, color=ACC, fontweight="bold", va="center")
+ax.text(0.2, 3.2, "Two systems,\none generator", fontsize=8, color=ACC, fontweight="bold", va="center")
+ax.text(0.2, 1.4, "Shared parsing,\nscoring and\nserving", fontsize=8, color=ACC, fontweight="bold", va="center")
 fig.savefig(OUT / "architecture.png", dpi=200, bbox_inches="tight"); plt.close(fig)
 
 # 2. precision vs recall
