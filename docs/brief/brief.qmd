@@ -53,7 +53,7 @@ format:
 *At a glance* \
 *Problem:* Software that reads biomedical text needs the drugs and diseases it mentions as clean, machine-readable data. Large hosted models can do this, but a small model that is cheap, private and predictable is often the better choice if it is accurate enough. \
 *What I built:* A pipeline that fine-tunes a 1.5B-parameter open model (Qwen2.5-1.5B-Instruct) with LoRA to output `{"chemicals": [...], "diseases": [...]}`, an evaluation harness that compares it against few-shot prompting of the same base model on one shared test set, and a FastAPI service that returns schema-validated JSON. \
-*Headline result:* On 200 held-out BC5CDR sentences, strict entity F1 rose from *0.460 to 0.823* (paired bootstrap difference +0.362, 95% CI [0.308, 0.423]). Training took 4.8 minutes on a free Colab T4. This is a single run with one seed on one dataset (see limitations). \
+*Headline result:* On 200 held-out BC5CDR sentences, strict entity F1 rose from *0.460 to 0.823* (paired bootstrap difference +0.362, 95% CI [0.308, 0.423]). Training took 4.8 minutes on a free Colab T4. A larger budget chosen on validation data (5,228 sentences, 3 epochs, 32 minutes on a Kaggle T4) raised it to *0.895* [0.861, 0.926] on the same test set. Each is a single run with one seed on one dataset (see limitations). \
 *Stack:* Python, PyTorch, Hugging Face Transformers + PEFT, pydantic, FastAPI, NumPy, matplotlib, pytest, GitHub Actions. \
 *Repo:* #link("https://github.com/rkesseku/clinical-lora-extractor")[github.com/rkesseku/clinical-lora-extractor]
 ]
@@ -157,7 +157,7 @@ The paired bootstrap on overall F1 (LoRA minus few-shot) gives *+0.362* [+0.308,
 
 ## Is one epoch enough?
 
-The headline run trained for one epoch on 2,000 sentences, a budget I had not tested. A follow-up grid trained a fresh adapter for each of 1, 2 and 3 epochs on 2,000 sentences and on the full training split (5,228 sentences), and scored each on 300 validation sentences (@tbl-ablation). Validation F1 rose with both data and epochs, and the rule picked the full split with 3 epochs. Scored once on the test set, it reached strict F1 *0.895* [0.861, 0.926] against 0.822 [0.783, 0.860] for the original recipe, a paired gain of +0.073 [+0.029, +0.119]. Training took 32 minutes instead of 4. The re-run of the original recipe matched the headline run closely (0.822 against 0.823), but the best setting sits at the edge of the grid, so a larger budget may help further.
+The headline run trained for one epoch on 2,000 sentences, a budget I had not tested. A follow-up grid trained a fresh adapter for each of 1, 2 and 3 epochs on 2,000 sentences and on the full training split (5,228 sentences), and scored each on 300 validation sentences (@tbl-ablation). Validation F1 rose with both data and epochs, and the rule picked the full split with 3 epochs. Scored once on the test set, it reached strict F1 *0.895* [0.861, 0.926] against 0.822 [0.783, 0.860] for the original recipe, a paired gain of +0.073 [+0.029, +0.119]. Training took 32 minutes instead of 4, on a free Kaggle T4. The re-run of the original recipe matched the headline run closely (0.822 against 0.823), but the best setting sits at the edge of the grid, so a larger budget may help further.
 
 | Training sentences | 1 epoch | 2 epochs | 3 epochs |
 |---|---|---|---|
