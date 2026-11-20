@@ -102,16 +102,39 @@ proper uncertainty quantification instead of a single point estimate.
 
 Command-line equivalent (needs a GPU): `clinical-lora run --n-train 2000 --n-test 200`.
 
-### Is one epoch enough? Training-budget ablation (set up, not yet run)
+### Is one epoch enough? Training-budget ablation
 
-The reported run used one epoch on 2,000 sentences, a budget choice that was never tested. The
+The reported run used one epoch on 2,000 sentences, a budget that was never tested. The
 `notebooks/ablation_colab.ipynb` notebook (or `clinical-lora ablate`) trains a grid of
-**epochs 1, 2, 3 x 2,000 sentences vs. the full training split**, each from a fresh base model, and
-scores every configuration on 300 sentences of the BC5CDR **validation** split. The best configuration
-is chosen on validation strict F1 alone. The test set is then used only once, to evaluate the selected
-configuration and the reported recipe, with a paired bootstrap of the difference. Outputs go to
-`results_ablation/` (`ablation.json`, `ablation.md`, `ablation_val_f1.png`). No results will be
-reported here until the ablation has been run.
+**epochs 1, 2, 3 x 2,000 sentences vs. the full training split (5,228 sentences)**, each from a fresh
+base model, and scores every configuration on 300 sentences of the BC5CDR **validation** split. The best
+configuration is chosen on validation strict F1 alone. The test set is then used once, to evaluate the
+selected configuration and the reported recipe, with a paired bootstrap of the difference. The run
+below was done on a free Kaggle T4, and its output is in
+[`docs/results/ablation/ablation.json`](docs/results/ablation/ablation.json).
+
+Validation strict F1 (300 sentences), with 95% bootstrap intervals:
+
+| Training sentences | 1 epoch | 2 epochs | 3 epochs |
+|---|---|---|---|
+| 2,000 | 0.819 [0.782, 0.850] | 0.847 [0.815, 0.875] | 0.869 [0.838, 0.897] |
+| 5,228 (all) | 0.862 [0.830, 0.889] | 0.884 [0.857, 0.910] | **0.893** [0.868, 0.915] |
+
+F1 rises with both more data and more epochs, so the selection rule picked all 5,228 sentences for 3
+epochs. On the 200 test sentences, scored once:
+
+| Configuration | Strict F1 | Relaxed F1 | Chemical F1 | Disease F1 | Training time |
+|---|---|---|---|---|---|
+| 2,000 sentences, 1 epoch (reported recipe) | 0.822 [0.783, 0.860] | 0.857 [0.820, 0.892] | 0.846 | 0.792 | 4.2 min |
+| 5,228 sentences, 3 epochs (selected) | **0.895** [0.861, 0.926] | **0.924** [0.899, 0.949] | **0.924** | **0.861** | 32.3 min |
+
+The paired difference is +0.073 strict F1 [+0.029, +0.119] and +0.067 relaxed F1 [+0.029, +0.106].
+Both intervals exclude zero, so the one-epoch budget left accuracy on the table. Both configurations
+produced valid JSON for every test sentence, and mean latency rose slightly, from 0.36 s to 0.40 s per
+sentence. The reference recipe's per-type scores (0.846 for chemicals, 0.792 for diseases) closely match
+the original run reported below, which suggests that run was not a lucky draw. The selected
+configuration sits at the edge of the grid, so a larger budget may help further, and that remains
+untested. This is still one seed.
 
 The grid is long for a single free GPU session, so the code saves each finished configuration (validation row
 and adapter) and each test evaluation under `results_ablation/checkpoints/` as soon as it completes.
@@ -189,8 +212,9 @@ optional hosted-API baseline was not run, so no API cost is reported.
 * Evaluation is string-level and document-deduplicated (no offsets, no mention counts).
 * The reported run uses a subsample (2,000 train / 200 test examples, one seed) to fit a free T4. Scale
   up in the config cell for tighter intervals and repeat over seeds before drawing finer conclusions.
-* The training budget (1 epoch, 2,000 sentences) was not tuned. The ablation above tests it but has not
-  been run yet.
+* The headline numbers below use the original budget (1 epoch, 2,000 sentences). The ablation above
+  shows that the full training split with 3 epochs is clearly better on test, but the main tables
+  were not re-run with it.
 * Latency is amortised over a generation batch and depends on hardware.
 
 ## License

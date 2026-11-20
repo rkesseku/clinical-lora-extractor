@@ -1,0 +1,456 @@
+{
+  "meta": {
+    "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "n_val": 300,
+    "n_test": 200,
+    "selection": "highest validation strict F1; ties -> fewer documents x epochs",
+    "config": {
+      "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "epochs": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "n_train": [
+        2000,
+        null
+      ],
+      "reference": [
+        2000,
+        1.0
+      ],
+      "n_val": 300,
+      "n_test": 200,
+      "seed": 0,
+      "per_device_train_batch_size": 2,
+      "gradient_accumulation_steps": 8,
+      "max_length": 1024,
+      "learning_rate": 0.0002,
+      "lora_r": 16,
+      "lora_alpha": 32,
+      "max_steps": -1,
+      "load_in_4bit": false,
+      "max_new_tokens": 256,
+      "eval_batch_size": 8,
+      "n_boot": 1000,
+      "out_dir": "/kaggle/working/results_ablation",
+      "adapter_root": "/kaggle/working/adapters/ablation",
+      "resume": true
+    }
+  },
+  "grid": [
+    {
+      "name": "n=2000, epochs=1",
+      "n_train": 2000,
+      "n_train_requested": 2000,
+      "epochs": 1.0,
+      "cost_units": 2000.0,
+      "adapter_dir": "/kaggle/working/adapters/ablation/n2000_e1",
+      "train_loss": 0.09032549238204957,
+      "train_runtime_s": 254.4757,
+      "val_strict_f1": {
+        "value": 0.8185567010309278,
+        "lo": 0.7822407857455352,
+        "hi": 0.8496326093323023
+      },
+      "val_relaxed_f1": {
+        "value": 0.8677685950413223,
+        "lo": 0.840479559599106,
+        "hi": 0.8922750481292374
+      },
+      "val_strict_json_rate": 1.0
+    },
+    {
+      "name": "n=2000, epochs=2",
+      "n_train": 2000,
+      "n_train_requested": 2000,
+      "epochs": 2.0,
+      "cost_units": 4000.0,
+      "adapter_dir": "/kaggle/working/adapters/ablation/n2000_e2",
+      "train_loss": 0.05704016959667206,
+      "train_runtime_s": 492.3736,
+      "val_strict_f1": {
+        "value": 0.8472505091649695,
+        "lo": 0.8148873185994869,
+        "hi": 0.8750030251694095
+      },
+      "val_relaxed_f1": {
+        "value": 0.8990825688073395,
+        "lo": 0.8731424737551943,
+        "hi": 0.9202871442130821
+      },
+      "val_strict_json_rate": 1.0
+    },
+    {
+      "name": "n=2000, epochs=3",
+      "n_train": 2000,
+      "n_train_requested": 2000,
+      "epochs": 3.0,
+      "cost_units": 6000.0,
+      "adapter_dir": "/kaggle/working/adapters/ablation/n2000_e3",
+      "train_loss": 0.04107678484916687,
+      "train_runtime_s": 744.6677,
+      "val_strict_f1": {
+        "value": 0.8689516129032259,
+        "lo": 0.8384539121114682,
+        "hi": 0.8967691170471455
+      },
+      "val_relaxed_f1": {
+        "value": 0.9142280524722504,
+        "lo": 0.8899796007709754,
+        "hi": 0.9351189829349289
+      },
+      "val_strict_json_rate": 1.0
+    },
+    {
+      "name": "n=all, epochs=1",
+      "n_train": 5228,
+      "n_train_requested": null,
+      "epochs": 1.0,
+      "cost_units": 5228.0,
+      "adapter_dir": "/kaggle/working/adapters/ablation/nall_e1",
+      "train_loss": 0.06327747624219375,
+      "train_runtime_s": 647.5999,
+      "val_strict_f1": {
+        "value": 0.8616915422885573,
+        "lo": 0.830442314842984,
+        "hi": 0.8886791438098312
+      },
+      "val_relaxed_f1": {
+        "value": 0.9003984063745021,
+        "lo": 0.8763791996646164,
+        "hi": 0.9223611403560246
+      },
+      "val_strict_json_rate": 1.0
+    },
+    {
+      "name": "n=all, epochs=2",
+      "n_train": 5228,
+      "n_train_requested": null,
+      "epochs": 2.0,
+      "cost_units": 10456.0,
+      "adapter_dir": "/kaggle/working/adapters/ablation/nall_e2",
+      "train_loss": 0.0394581226455418,
+      "train_runtime_s": 1297.5557,
+      "val_strict_f1": {
+        "value": 0.8841893252769386,
+        "lo": 0.8574555074555076,
+        "hi": 0.9098288479851808
+      },
+      "val_relaxed_f1": {
+        "value": 0.9254032258064515,
+        "lo": 0.9059246956355893,
+        "hi": 0.9427542685400303
+      },
+      "val_strict_json_rate": 1.0
+    },
+    {
+      "name": "n=all, epochs=3",
+      "n_train": 5228,
+      "n_train_requested": null,
+      "epochs": 3.0,
+      "cost_units": 15684.0,
+      "adapter_dir": "/kaggle/working/adapters/ablation/nall_e3",
+      "train_loss": 0.029438251439481023,
+      "train_runtime_s": 1938.5411,
+      "val_strict_f1": {
+        "value": 0.8928571428571428,
+        "lo": 0.8680610710649425,
+        "hi": 0.9153934010152285
+      },
+      "val_relaxed_f1": {
+        "value": 0.9354518371400199,
+        "lo": 0.917091124918775,
+        "hi": 0.9508290846340889
+      },
+      "val_strict_json_rate": 1.0
+    }
+  ],
+  "selected": "n=all, epochs=3",
+  "reference": "n=2000, epochs=1",
+  "test": {
+    "meta": {
+      "n_test": 200,
+      "n_boot": 1000,
+      "seed": 0,
+      "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "note": "selected on validation; test used once"
+    },
+    "systems": {
+      "n=2000, epochs=1": {
+        "n": 200,
+        "note": "",
+        "validity": {
+          "strict_json_rate": 1.0,
+          "repaired_rate": 0.0,
+          "parsed_rate": 1.0
+        },
+        "entity": {
+          "strict": {
+            "chemicals": {
+              "precision": {
+                "value": 0.867816091954023,
+                "lo": 0.8103362068965517,
+                "hi": 0.9222890962700026
+              },
+              "recall": {
+                "value": 0.825136612021858,
+                "lo": 0.7436735067470972,
+                "hi": 0.9013289070067807
+              },
+              "f1": {
+                "value": 0.84593837535014,
+                "lo": 0.7954512227538543,
+                "hi": 0.8976752365608476
+              }
+            },
+            "diseases": {
+              "precision": {
+                "value": 0.8571428571428571,
+                "lo": 0.8,
+                "hi": 0.9107340391908976
+              },
+              "recall": {
+                "value": 0.7354838709677419,
+                "lo": 0.662413926665519,
+                "hi": 0.8050355305072286
+              },
+              "f1": {
+                "value": 0.7916666666666666,
+                "lo": 0.7335187800705043,
+                "hi": 0.8482506667249595
+              }
+            },
+            "overall": {
+              "precision": {
+                "value": 0.8631921824104235,
+                "lo": 0.8171609421347521,
+                "hi": 0.9017565385857281
+              },
+              "recall": {
+                "value": 0.7840236686390533,
+                "lo": 0.7293929340028694,
+                "hi": 0.8384220102281668
+              },
+              "f1": {
+                "value": 0.8217054263565892,
+                "lo": 0.7833032045587953,
+                "hi": 0.859757522224755
+              }
+            }
+          },
+          "relaxed": {
+            "chemicals": {
+              "precision": {
+                "value": 0.8793103448275862,
+                "lo": 0.8265068818224964,
+                "hi": 0.9281964194064547
+              },
+              "recall": {
+                "value": 0.8406593406593407,
+                "lo": 0.7564733962810026,
+                "hi": 0.9177316973869273
+              },
+              "f1": {
+                "value": 0.8595505617977528,
+                "lo": 0.8096482829056555,
+                "hi": 0.9102653631284916
+              }
+            },
+            "diseases": {
+              "precision": {
+                "value": 0.924812030075188,
+                "lo": 0.8749737394957984,
+                "hi": 0.9691381766381766
+              },
+              "recall": {
+                "value": 0.7935483870967742,
+                "lo": 0.721771820856489,
+                "hi": 0.859513344212244
+              },
+              "f1": {
+                "value": 0.8541666666666666,
+                "lo": 0.7985598088693225,
+                "hi": 0.9023003018692675
+              }
+            },
+            "overall": {
+              "precision": {
+                "value": 0.8990228013029316,
+                "lo": 0.8597050474636265,
+                "hi": 0.934984520123839
+              },
+              "recall": {
+                "value": 0.8189910979228486,
+                "lo": 0.7604319018675446,
+                "hi": 0.8741935483870967
+              },
+              "f1": {
+                "value": 0.8571428571428571,
+                "lo": 0.8199303652911478,
+                "hi": 0.8922203569148983
+              }
+            }
+          }
+        },
+        "latency_s": {
+          "mean": 0.36358480777500973,
+          "p50": 0.3569292601249572,
+          "p95": 0.5216694971250035
+        },
+        "tokens": {
+          "prompt_mean": 112.96,
+          "new_mean": 20.14,
+          "prompt_total": 22592,
+          "new_total": 4028
+        },
+        "cost_usd": null
+      },
+      "n=all, epochs=3": {
+        "n": 200,
+        "note": "",
+        "validity": {
+          "strict_json_rate": 1.0,
+          "repaired_rate": 0.0,
+          "parsed_rate": 1.0
+        },
+        "entity": {
+          "strict": {
+            "chemicals": {
+              "precision": {
+                "value": 0.918918918918919,
+                "lo": 0.8705476673427992,
+                "hi": 0.9580900698602794
+              },
+              "recall": {
+                "value": 0.9289617486338798,
+                "lo": 0.8781854838709677,
+                "hi": 0.9702380952380952
+              },
+              "f1": {
+                "value": 0.9239130434782609,
+                "lo": 0.8813517368686022,
+                "hi": 0.9581157920370146
+              }
+            },
+            "diseases": {
+              "precision": {
+                "value": 0.8636363636363636,
+                "lo": 0.806625786163522,
+                "hi": 0.9183732795443759
+              },
+              "recall": {
+                "value": 0.8580645161290322,
+                "lo": 0.8026108345187293,
+                "hi": 0.9130507246376811
+              },
+              "f1": {
+                "value": 0.8608414239482202,
+                "lo": 0.8122802740639996,
+                "hi": 0.9091041611449775
+              }
+            },
+            "overall": {
+              "precision": {
+                "value": 0.8938053097345132,
+                "lo": 0.8550638954171563,
+                "hi": 0.9327580920386072
+              },
+              "recall": {
+                "value": 0.8964497041420119,
+                "lo": 0.8583151294498381,
+                "hi": 0.9303030303030303
+              },
+              "f1": {
+                "value": 0.895125553914328,
+                "lo": 0.860920728360022,
+                "hi": 0.9257331509797768
+              }
+            }
+          },
+          "relaxed": {
+            "chemicals": {
+              "precision": {
+                "value": 0.9239130434782609,
+                "lo": 0.881248452970297,
+                "hi": 0.9608992861576661
+              },
+              "recall": {
+                "value": 0.9340659340659341,
+                "lo": 0.8835383304392566,
+                "hi": 0.9739683493589744
+              },
+              "f1": {
+                "value": 0.9289617486338797,
+                "lo": 0.8911378249930108,
+                "hi": 0.958683346541379
+              }
+            },
+            "diseases": {
+              "precision": {
+                "value": 0.922077922077922,
+                "lo": 0.8783740471240471,
+                "hi": 0.9610452450775031
+              },
+              "recall": {
+                "value": 0.9161290322580645,
+                "lo": 0.8680522798742139,
+                "hi": 0.9594594594594594
+              },
+              "f1": {
+                "value": 0.919093851132686,
+                "lo": 0.8864425770308123,
+                "hi": 0.948457683061
+              }
+            },
+            "overall": {
+              "precision": {
+                "value": 0.9230769230769231,
+                "lo": 0.8922117669423059,
+                "hi": 0.9512342051131354
+              },
+              "recall": {
+                "value": 0.9258160237388724,
+                "lo": 0.8920574192737781,
+                "hi": 0.9568008516537928
+              },
+              "f1": {
+                "value": 0.9244444444444445,
+                "lo": 0.8991318079934794,
+                "hi": 0.9486243040503208
+              }
+            }
+          }
+        },
+        "latency_s": {
+          "mean": 0.4044415077000076,
+          "p50": 0.37265860787499605,
+          "p95": 0.5747020328750523
+        },
+        "tokens": {
+          "prompt_mean": 112.96,
+          "new_mean": 20.965,
+          "prompt_total": 22592,
+          "new_total": 4193
+        },
+        "cost_usd": null
+      }
+    },
+    "paired_f1_difference": {
+      "a": "n=all, epochs=3",
+      "b": "n=2000, epochs=1",
+      "strict": {
+        "diff": 0.07342012755773886,
+        "lo": 0.029307506567034756,
+        "hi": 0.11892098647460964,
+        "p_two_sided": 0.0
+      },
+      "relaxed": {
+        "diff": 0.06730158730158742,
+        "lo": 0.029036986215033964,
+        "hi": 0.106138215415826,
+        "p_two_sided": 0.0
+      }
+    }
+  }
+}

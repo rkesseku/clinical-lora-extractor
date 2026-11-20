@@ -155,6 +155,17 @@ The paired bootstrap on overall F1 (LoRA minus few-shot) gives *+0.362* [+0.308,
 
 {{< pagebreak >}}
 
+## Is one epoch enough?
+
+The headline run trained for one epoch on 2,000 sentences, a budget I had not tested. A follow-up grid trained a fresh adapter for each of 1, 2 and 3 epochs on 2,000 sentences and on the full training split (5,228 sentences), and scored each on 300 validation sentences (@tbl-ablation). Validation F1 rose with both data and epochs, and the rule picked the full split with 3 epochs. Scored once on the test set, it reached strict F1 *0.895* [0.861, 0.926] against 0.822 [0.783, 0.860] for the original recipe, a paired gain of +0.073 [+0.029, +0.119]. Training took 32 minutes instead of 4. The re-run of the original recipe matched the headline run closely (0.822 against 0.823), but the best setting sits at the edge of the grid, so a larger budget may help further.
+
+| Training sentences | 1 epoch | 2 epochs | 3 epochs |
+|---|---|---|---|
+| 2,000 | 0.819 | 0.847 | 0.869 |
+| 5,228 (all) | 0.862 | 0.884 | **0.893** |
+
+: Validation strict F1 (300 sentences) for each training budget. Higher is better. {#tbl-ablation}
+
 # What this demonstrates
 
 - *End-to-end ownership of a fine-tuning project.* Data conversion, parameter-efficient training with answer-only loss, batched inference, structured-output parsing, evaluation and serving all live in one package with tests and CI.
@@ -167,7 +178,7 @@ The paired bootstrap on overall F1 (LoRA minus few-shot) gives *+0.362* [+0.308,
 *Limitations (as documented in the repo and checked against the run).*
 
 - *Literature, not clinical notes.* BC5CDR is a proxy. It has no PHI and says nothing directly about EHR text. This is a research and portfolio project, not a medical device.
-- *Small, single run.* The run used 2,000 training and 200 test sentence-level examples, one epoch and one seed. The intervals capture test-sample variability only, not training-seed variability, so the size of the gain should be treated as indicative.
+- *Small, single run.* The headline run used 2,000 training and 200 test sentence-level examples, one epoch and one seed. The ablation shows that this budget was too small, but the main comparison was not re-run with the larger one. The intervals capture test-sample variability only, not training-seed variability, so the size of the gain should be treated as indicative.
 - *String-level metric.* Scoring uses document-deduplicated mention strings with no offsets or mention counts, so the numbers are not comparable to published NER leaderboards.
 - *Latency caveat.* The LoRA adapter was evaluated *unmerged*, and adapter overhead at inference is the likely reason it is slower. Merging weights (supported via `--merge` in serving) should remove it, but this was *not measured*. The latency figures are also amortised over a batch and depend on the hardware.
 - *No hosted-API comparison.* The optional large-model baseline is implemented but was not run, so no claim is made about how the adapter compares with a larger model, and no cost figures exist.
