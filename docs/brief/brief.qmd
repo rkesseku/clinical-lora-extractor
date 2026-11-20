@@ -51,7 +51,7 @@ format:
 ```{=typst}
 #glance[
 *At a glance* \
-*Problem:* Software that reads biomedical text needs the drugs and diseases it mentions as clean, machine-readable data. Large hosted models can do this. A small model that is cheap, private and predictable is often the better choice, though, if it is accurate enough. \
+*Problem:* Software that reads biomedical text needs the drugs and diseases it mentions as clean, machine-readable data. Large hosted models can do this, but a small model that is cheap, private and predictable is often the better choice if it is accurate enough. \
 *What I built:* A pipeline that fine-tunes a 1.5B-parameter open model (Qwen2.5-1.5B-Instruct) with LoRA to output `{"chemicals": [...], "diseases": [...]}`, an evaluation harness that compares it against few-shot prompting of the same base model on one shared test set, and a FastAPI service that returns schema-validated JSON. \
 *Headline result:* On 200 held-out BC5CDR sentences, strict entity F1 rose from *0.460 to 0.823* (paired bootstrap difference +0.362, 95% CI [0.308, 0.423]). Training took 4.8 minutes on a free Colab T4. This is a single run with one seed on one dataset (see limitations). \
 *Stack:* Python, PyTorch, Hugging Face Transformers + PEFT, pydantic, FastAPI, NumPy, matplotlib, pytest, GitHub Actions. \
@@ -63,7 +63,7 @@ format:
 
 Most clinically relevant information is written as prose. To search it, link it to a database, or feed it to another program, a system first has to pull out the entities that matter and return them in a fixed structure. Here those entities are *chemicals* (drugs and compounds) and *diseases*. For example, given "Naloxone reverses the antihypertensive effect of clonidine." (the sentence used in the repo's serving example), the desired output is a JSON object listing `Naloxone` and `clonidine` under `chemicals` and any disease terms under `diseases`.
 
-Beyond accuracy, two properties matter in production. The output must be *valid and predictable*, because downstream code parses it. It must also be *cheap and controllable*. A model small enough to run on one modest GPU can be hosted privately, whereas a large hosted model adds per-token cost and raises data-sharing questions.
+Beyond accuracy, two properties matter in production. The output must be *valid and predictable*, because downstream code parses it. The system must also be *cheap and controllable*. A model small enough to run on one modest GPU can be hosted privately, whereas a large hosted model adds per-token cost and raises data-sharing questions.
 
 The question this project answers is narrow and testable. *For one well-defined extraction task, how much does a small set of trainable LoRA parameters on top of a 1.5B model buy over simply showing the same model three examples in the prompt?* I report the answer with confidence intervals and a paired significance test instead of a single point estimate.
 
@@ -81,12 +81,12 @@ The corpus is BC5CDR [@li2016bc5cdr], a set of PubMed articles annotated with ch
 
 ## How it works, end to end
 
-1. *Data* (`data.py`). BC5CDR is read from the `tner/bc5cdr` release (JSON-lines files, then a parquet copy, then legacy `bigbio/bc5cdr`), avoiding Hub loading scripts that recent `datasets` versions reject. BIO tags or character spans become the target JSON, which holds the deduplicated mention strings of each type in order of first appearance. Examples are the sentence-level units of that release.
-2. *Prompt* (`prompts.py`). A single system instruction ("reply with ONLY a JSON object...") and user template are used both for few-shot prompting and for training, so the two systems differ only in how the model learned the task.
+1. *Data* (`data.py`). BC5CDR is read from the `tner/bc5cdr` release (its JSON-lines files first, then a parquet copy, then the legacy `bigbio/bc5cdr`), which avoids the Hub loading scripts that recent `datasets` versions reject. BIO tags or character spans become the target JSON, which holds the deduplicated mention strings of each type in order of first appearance. Each example is one sentence-level unit of that release.
+2. *Prompt* (`prompts.py`). A single system instruction ("reply with ONLY a JSON object...") and a single user template serve both few-shot prompting and training, so the two systems differ only in how the model learned the task.
 3. *Training* (`train.py`). LoRA [@hu2022lora] adapters (r=16, alpha=32, dropout 0.05) sit on all attention and MLP projection layers. Prompt tokens are masked, so the loss covers only the JSON answer tokens and the end-of-sequence token.
-4. *Inference* (`inference.py`). Batched greedy decoding with per-example latency and token accounting, identical for both systems.
+4. *Inference* (`inference.py`). Both systems use the same batched greedy decoding, with per-example latency and token accounting.
 5. *Parsing* (`parsing.py`). The output passes through candidate extraction (code fences, brace matching), strict JSON parsing, a repair step for trailing commas and truncated output, and finally a pydantic `Extraction` schema. Strictly valid, repaired and unparseable outputs are counted separately, and an unparseable output is scored as an empty prediction.
-6. *Evaluation* (`metrics.py`, `evaluate.py`). Strict and relaxed entity-level precision, recall and F1, document-level bootstrap intervals [@efron1993], and a paired bootstrap for the difference between systems. The step writes `metrics.json`, a Markdown report and plots.
+6. *Evaluation* (`metrics.py`, `evaluate.py`). This step computes strict and relaxed entity-level precision, recall and F1, document-level bootstrap intervals [@efron1993], and a paired bootstrap for the difference between systems. It writes `metrics.json`, a Markdown report and plots.
 7. *Serving* (`serve.py`). A FastAPI `/extract` endpoint wraps the model in parse, retry and repair logic and returns a validated response with `valid_json`, `repaired` and `attempts` fields so a caller can see how the answer was obtained.
 
 {{< pagebreak >}}
@@ -95,7 +95,7 @@ The corpus is BC5CDR [@li2016bc5cdr], a set of PubMed articles annotated with ch
 
 ## Task format and why JSON
 
-The model emits a small fixed schema rather than free text or character offsets. Training targets are then trivial to generate from BC5CDR annotations, and validity becomes measurable because the output either parses into the schema or it does not. The README states the trade-off. Evaluation is string-level, which is more lenient than offset-based NER benchmarks and *not comparable to published BC5CDR NER numbers*.
+The model emits a small fixed schema rather than free text or character offsets. Training targets are then trivial to generate from BC5CDR annotations, and validity becomes measurable because the output either parses into the schema or it does not. The trade-off, stated in the README, is that evaluation is string-level. That is more lenient than offset-based NER benchmarks and *not comparable to published BC5CDR NER numbers*.
 
 ## Fine-tuning setup
 
@@ -114,19 +114,19 @@ The model emits a small fixed schema rather than free text or character offsets.
 
 *Answer-only loss.* With the prompt masked, the gradient signal comes only from the JSON the model must produce. Long inputs are truncated from the left of the prompt, never from the answer, so targets are not cut off.
 
-*The same prompt for both systems.* One instruction template removes prompt wording as a confound. The base model gets three deterministic demonstrations (short training sentences that contain both entity types, picked at even spacing). The LoRA model is evaluated zero-shot because the task lives in its adapter.
+*The same prompt for both systems.* One instruction template removes prompt wording as a confound. The base model gets three deterministic demonstrations (short training sentences that contain both entity types, picked at even intervals). The LoRA model is evaluated zero-shot because it has learned the task in its adapter weights.
 
-*One shared, deterministic test subsample.* Per-document counts line up across systems. That is what makes a *paired* bootstrap valid, and it gives a much tighter test of the difference than comparing two independent intervals.
+*One shared, deterministic test subsample.* Because both systems are scored on the same documents, per-document counts line up across systems. This alignment is what makes a *paired* bootstrap valid, and the paired test of the difference is much tighter than a comparison of two independent intervals.
 
-*Two match criteria.* Strict is exact string match after whitespace normalisation (case-sensitive). Relaxed is case- and punctuation-insensitive with one-to-one matching that also gives credit for token-subset overlap (for example "hepatic necrosis" against "necrosis"). With both reported, you can see how much of the gap is boundary or casing noise and how much is real misses.
+*Two match criteria.* Strict matching requires an exact, case-sensitive string match after whitespace normalisation. Relaxed matching ignores case and punctuation and uses one-to-one matching that also gives credit for token-subset overlap (for example "hepatic necrosis" against "necrosis"). Reporting both shows how much of the gap is boundary or casing noise and how much is genuine misses.
 
-*Validity as a first-class metric.* For a structured-output system, parse rate matters as much as F1. The serving path retries (sampling on retries), then falls back to repair heuristics. It returns HTTP 502 only when nothing parseable was produced.
+*Validity as a first-class metric.* For a structured-output system, parse rate matters as much as F1. The serving path retries with sampling, then falls back to repair heuristics, and returns HTTP 502 only when nothing parseable was produced.
 
 *No hard-coded prices.* The cost of an optional hosted-model baseline is computed only if the user supplies their own per-token prices. This avoids stale or invented figures.
 
 ## Engineering and tests
 
-The test suite has 44 tests (all passing). They build a tiny randomly initialised Llama model and an in-code tokenizer, then run real LoRA training steps and generation on CPU. Other tests cover parsing and repair, the metrics, and the full evaluation and report on synthetic documents. The FastAPI endpoint and API client are tested with stubs. No weights or datasets are downloaded, and CI runs on GitHub Actions.
+The test suite has 44 tests, all passing. Some build a tiny, randomly initialised Llama model and an in-code tokenizer, then run real LoRA training steps and generation on CPU. Others cover parsing and repair, the metrics, and the full evaluation and report on synthetic documents, and the FastAPI endpoint and API client are tested with stubs. The tests download no weights or datasets, and CI runs them on GitHub Actions.
 
 {{< pagebreak >}}
 
@@ -141,15 +141,15 @@ All numbers come from the single real run in `docs/results/metrics.json` (Colab 
 
 : Overall entity-level results. Bold marks the better system on each metric. {#tbl-results}
 
-The paired bootstrap on overall F1 (LoRA minus few-shot) gives *+0.362* [+0.308, +0.423] strict and *+0.307* [+0.256, +0.359] relaxed. No bootstrap resample favoured few-shot (reported two-sided p < 0.001).
+The paired bootstrap on overall F1 (LoRA minus few-shot) gives *+0.362* [+0.308, +0.423] strict and *+0.307* [+0.256, +0.359] relaxed. No bootstrap resample favoured the few-shot system (reported two-sided p < 0.001).
 
-![Precision versus recall for each system, by entity type and overall. The few-shot baseline is fairly precise but misses most entities, and LoRA moves both axes up.](figures/precision_recall.png){#fig-pr width=50%}
+![Precision versus recall for each system, by entity type and overall. The few-shot baseline is fairly precise but misses most entities, while LoRA raises both precision and recall.](figures/precision_recall.png){#fig-pr width=50%}
 
 ![F1 by entity type with 95% bootstrap intervals (restyled from the repo's results plot).](figures/f1_by_type.png){#fig-f1 width=50%}
 
-*Reading the results.* The few-shot baseline falls short on recall (0.352 strict overall, 0.258 for diseases) rather than precision. LoRA roughly doubles recall (0.790) and raises precision as well (0.859). Under strict matching, diseases are the harder type for both systems (F1 0.348 to 0.795, against 0.551 to 0.846 for chemicals). Relaxed matching nearly closes LoRA's chemical/disease gap (0.860 versus 0.863), which suggests that some disease errors are boundary disagreements. Both systems produced strictly valid JSON for all 200 examples, so the gain lies in extraction quality and not in format.
+*Reading the results.* The few-shot baseline falls short on recall (0.352 strict overall, 0.258 for diseases) rather than precision. LoRA roughly doubles recall (0.790) and raises precision as well (0.859). Under strict matching, diseases are the harder type for both systems (disease F1 of 0.348 for few-shot and 0.795 for LoRA, against 0.551 and 0.846 for chemicals). Relaxed matching nearly closes LoRA's gap between the two types (0.860 for chemicals versus 0.863 for diseases), which suggests that some disease errors are boundary disagreements. Both systems produced strictly valid JSON for all 200 examples, so the gain lies in extraction quality and not in format.
 
-*Cost profile.* Prompts average 381 tokens for few-shot and 113 for LoRA. Mean latency was 0.237 s versus 0.406 s, so LoRA was *slower* despite the shorter prompt.
+*Cost profile.* Prompts average 381 tokens for few-shot and 113 for LoRA. Mean latency was 0.237 s for few-shot and 0.406 s for LoRA, so LoRA was *slower* despite its shorter prompt.
 
 ![Prompt length and latency on the same T4 and batch size.](figures/cost_profile.png){#fig-cost width=42%}
 
@@ -169,7 +169,7 @@ The paired bootstrap on overall F1 (LoRA minus few-shot) gives *+0.362* [+0.308,
 - *Literature, not clinical notes.* BC5CDR is a proxy. It has no PHI and says nothing directly about EHR text. This is a research and portfolio project, not a medical device.
 - *Small, single run.* The run used 2,000 training and 200 test sentence-level examples, one epoch and one seed. The intervals capture test-sample variability only, not training-seed variability, so the size of the gain should be treated as indicative.
 - *String-level metric.* Scoring uses document-deduplicated mention strings with no offsets or mention counts, so the numbers are not comparable to published NER leaderboards.
-- *Latency caveat.* The LoRA adapter was evaluated *unmerged*, and adapter overhead at inference is the likely reason it is slower. Merging weights (supported via `--merge` in serving) should remove it, but this was *not measured*. Latency is also amortised over a batch and hardware-dependent.
+- *Latency caveat.* The LoRA adapter was evaluated *unmerged*, and adapter overhead at inference is the likely reason it is slower. Merging weights (supported via `--merge` in serving) should remove it, but this was *not measured*. The latency figures are also amortised over a batch and depend on the hardware.
 - *No hosted-API comparison.* The optional large-model baseline is implemented but was not run, so no claim is made about how the adapter compares with a larger model, and no cost figures exist.
 - No per-example predictions file is committed, so I did not mine individual error cases for this brief.
 
