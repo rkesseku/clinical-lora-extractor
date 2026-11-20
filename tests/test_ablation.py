@@ -77,6 +77,73 @@ def test_cli_ablate_parses_sizes(monkeypatch):
         return {"selected": "x", "reference": "y"}
 
     monkeypatch.setattr("clinical_lora.ablation.run_ablation", fake_run)
-    main(["ablate", "--epochs", "1", "3", "--n-train", "500", "all", "--n-val", "50"])
+    main(
+        ["ablate", "--epochs", "1", "3", "--n-train", "500", "all", "--n-val", "50", "--no-resume"]
+    )
     cfg = seen["cfg"]
     assert cfg.epochs == (1.0, 3.0) and cfg.n_train == (500, None) and cfg.n_val == 50
+    assert cfg.resume is False
+
+
+def test_ablation_resumes_from_checkpoints(tmp_path):
+    """A rerun after an interruption reuses finished configurations and test generations."""
+    _, tok = make_tiny_model_and_tokenizer()
+    ex = synthetic_examples(8)
+    splits = {"train": ex, "validation": ex[:4], "test": ex[4:8]}
+    built = []
+
+    def factory():
+        model, _ = make_tiny_model_and_tokenizer()
+        built.append(model)
+        return model
+
+    def load_adapter(base, path):
+        from peft import PeftModel
+
+        return PeftModel.from_pretrained(base, path)
+
+    def cfg(**kw):
+        base = dict(
+            base_model="tiny", epochs=(1.0,), n_train=(4, None), reference=(4, 1.0), n_val=4,
+            n_test=4, per_device_train_batch_size=2, gradient_accumulation_steps=1,
+            max_length=2048, max_new_tokens=8, eval_batch_size=2, n_boot=20,
+            out_dir=str(tmp_path / "res"), adapter_root=str(tmp_path / "ad"),
+        )
+        return AblationConfig(**{**base, **kw})
+
+    first = run_ablation(cfg(), model_factory=factory, tokenizer=tok, splits=splits,
+                         load_adapter=load_adapter)
+    ckpts = sorted(p.name for p in (tmp_path / "res" / "checkpoints").glob("*.json"))
+    assert "grid_n4_e1.json" in ckpts and "grid_nall_e1.json" in ckpts
+    assert any(n.startswith("test_") for n in ckpts)
+
+    # Simulate a session that died after the grid: drop the final outputs, keep checkpoints.
+    (tmp_path / "res" / "ablation.json").unlink()
+    built.clear()
+    second = run_ablation(cfg(), model_factory=factory, tokenizer=tok, splits=splits,
+                          load_adapter=load_adapter)
+    assert built == []  # nothing retrained or re-generated
+    assert second["selected"] == first["selected"]
+    assert [r["val_strict_f1"] for r in second["grid"]] == [
+        r["val_strict_f1"] for r in first["grid"]
+    ]
+    assert json.loads((tmp_path / "res" / "ablation.json").read_text())["grid"]
+
+    # A missing adapter forces that configuration to retrain.
+    import shutil
+
+    shutil.rmtree(tmp_path / "ad" / "nall_e1")
+    built.clear()
+    run_ablation(cfg(), model_factory=factory, tokenizer=tok, splits=splits,
+                 load_adapter=load_adapter)
+    assert len(built) == 1
+
+    # Different settings invalidate the checkpoints; resume=False ignores them.
+    built.clear()
+    run_ablation(cfg(n_boot=21), model_factory=factory, tokenizer=tok, splits=splits,
+                 load_adapter=load_adapter)
+    assert len(built) >= 2
+    built.clear()
+    run_ablation(cfg(n_boot=21, resume=False), model_factory=factory, tokenizer=tok,
+                 splits=splits, load_adapter=load_adapter)
+    assert len(built) >= 2

@@ -40,6 +40,9 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--load-in-4bit", action="store_true")
     a.add_argument("--out", default="results_ablation")
     a.add_argument("--adapter-root", default="adapters/ablation")
+    a.add_argument(
+        "--no-resume", action="store_true", help="retrain everything, ignoring checkpoints"
+    )
 
     s = sub.add_parser("serve", help="serve base model + adapter over FastAPI")
     s.add_argument("--base-model", default="Qwen/Qwen2.5-1.5B-Instruct")
@@ -79,6 +82,7 @@ def main(argv: list[str] | None = None) -> None:
             load_in_4bit=args.load_in_4bit,
             out_dir=args.out,
             adapter_root=args.adapter_root,
+            resume=not args.no_resume,
         )
         res = run_ablation(acfg)
         print(f"selected: {res['selected']} (reference: {res['reference']})")

@@ -113,6 +113,13 @@ and for the reported recipe, with a paired bootstrap of the difference. Outputs 
 `results_ablation/` (`ablation.json`, `ablation.md`, `ablation_val_f1.png`). No results are reported
 here until it has been run.
 
+The grid is long for one free GPU session, so it saves each finished configuration (validation row
+and adapter) and each test evaluation under `results_ablation/checkpoints/` as soon as it completes;
+a rerun skips anything already finished with the same settings (`--no-resume` retrains everything).
+On Colab, `USE_DRIVE = True` keeps these on Google Drive between sessions. The
+`notebooks/ablation_kaggle.ipynb` version runs on a free Kaggle T4 for up to 12 hours as a background
+commit, and resumes from an earlier version attached as input.
+
 ## Local development (CPU, no downloads)
 
 ```bash

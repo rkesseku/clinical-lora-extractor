@@ -5,6 +5,13 @@ Every configuration is trained from a fresh copy of the base model (so a 2-epoch
 fixed sample of BC5CDR *validation* documents. The best configuration is picked on validation
 strict F1 only. The test set is touched once at the end, for the selected configuration and for
 the reference recipe (2,000 documents, 1 epoch), so the comparison is not tuned on test data.
+
+Resuming: each finished configuration (its validation row) and each test evaluation (its raw
+generations) is written to ``<out_dir>/checkpoints/`` as soon as it completes. With
+``resume=True`` a rerun skips any configuration whose checkpoint and saved adapter exist and whose
+settings fingerprint matches, so a grid can be spread over several short GPU sessions as long as
+``out_dir`` and ``adapter_root`` persist between them (Google Drive on Colab, a re-attached
+notebook output on Kaggle).
 """
 
 from __future__ import annotations
@@ -17,7 +24,8 @@ from pathlib import Path
 
 from .data import Example, load_bc5cdr, subsample
 from .evaluate import SystemRun, build_results
-from .inference import Generator, load_base_model, load_tokenizer, predict
+from .inference import Generator, Prediction, load_base_model, load_tokenizer, predict
+from .parsing import parse_extraction
 from .train import TrainConfig, train_lora
 
 
@@ -43,6 +51,54 @@ class AblationConfig:
     n_boot: int = 1000
     out_dir: str = "results_ablation"
     adapter_root: str = "adapters/ablation"
+    resume: bool = True  # reuse finished configurations found in out_dir/checkpoints
+
+
+# Fields that only say where to write or which grid points to run; they do not change the result
+# of any single configuration, so they are left out of the checkpoint fingerprint.
+_NOT_FINGERPRINTED = {"epochs", "n_train", "reference", "out_dir", "adapter_root", "resume"}
+
+
+def _fingerprint(cfg: AblationConfig) -> dict:
+    return {k: v for k, v in asdict(cfg).items() if k not in _NOT_FINGERPRINTED}
+
+
+def _ckpt_path(cfg: AblationConfig, kind: str, n_train: int | None, epochs: float) -> Path:
+    return Path(cfg.out_dir) / "checkpoints" / f"{kind}_{_slug(n_train, epochs)}.json"
+
+
+def _write_atomic(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _read_ckpt(cfg: AblationConfig, path: Path) -> dict | None:
+    """Checkpoint payload if resuming, the file exists and its fingerprint matches; else None."""
+    if not cfg.resume or not path.exists():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("fingerprint") != json.loads(json.dumps(_fingerprint(cfg))):
+        print(f"[ablation] ignoring {path.name}: it was made with different settings")
+        return None
+    return payload
+
+
+def _dump_predictions(preds: list[Prediction]) -> list[dict]:
+    return [
+        {"raw": p.raw, "latency_s": p.latency_s, "prompt_tokens": p.prompt_tokens,
+         "new_tokens": p.new_tokens}
+        for p in preds
+    ]
+
+
+def _load_predictions(items: list[dict]) -> list[Prediction]:
+    return [
+        Prediction(raw=d["raw"], parse=parse_extraction(d["raw"]), latency_s=d["latency_s"],
+                   prompt_tokens=d["prompt_tokens"], new_tokens=d["new_tokens"])
+        for d in items
+    ]
 
 
 def config_name(n_train: int | None, epochs: float) -> str:
@@ -111,8 +167,14 @@ def run_ablation(
         grid.append(cfg.reference)
     rows: list[dict] = []
     for n_train, epochs in grid:
-        train = subsample(splits["train"], n_train, cfg.seed)
         adapter_dir = str(Path(cfg.adapter_root) / _slug(n_train, epochs))
+        ckpt = _ckpt_path(cfg, "grid", n_train, epochs)
+        saved = _read_ckpt(cfg, ckpt)
+        if saved is not None and (Path(adapter_dir) / "adapter_config.json").exists():
+            rows.append({**saved["row"], "adapter_dir": adapter_dir})
+            print(f"[ablation] {rows[-1]['name']}: reused from {ckpt}")
+            continue
+        train = subsample(splits["train"], n_train, cfg.seed)
         tcfg = TrainConfig(
             output_dir=adapter_dir,
             r=cfg.lora_r,
@@ -149,6 +211,7 @@ def run_ablation(
                 "val_strict_json_rate": summary["validity"]["strict_json_rate"],
             }
         )
+        _write_atomic(ckpt, {"fingerprint": _fingerprint(cfg), "row": rows[-1]})
         print(f"[ablation] {name}: val strict F1 {rows[-1]['val_strict_f1']['value']:.3f}")
         del peft_model, model, gen
         _release_memory()
@@ -159,10 +222,20 @@ def run_ablation(
     # One test evaluation each for the selected and the reference configuration.
     test_runs = []
     for row in [ref] if best is ref else [ref, best]:
+        ckpt = _ckpt_path(cfg, "test", row["n_train_requested"], row["epochs"])
+        saved = _read_ckpt(cfg, ckpt)
+        if saved is not None:
+            test_runs.append(SystemRun(row["name"], _load_predictions(saved["predictions"])))
+            print(f"[ablation] test predictions for {row['name']} reused from {ckpt}")
+            continue
         base = model_factory()
         model = load_adapter(base, row["adapter_dir"])
         gen = Generator(model, tokenizer, cfg.max_new_tokens, cfg.eval_batch_size)
-        test_runs.append(SystemRun(row["name"], predict(gen, test)))
+        preds = predict(gen, test)
+        _write_atomic(
+            ckpt, {"fingerprint": _fingerprint(cfg), "predictions": _dump_predictions(preds)}
+        )
+        test_runs.append(SystemRun(row["name"], preds))
         del model, base, gen
         _release_memory()
     test_results = build_results(
